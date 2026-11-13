@@ -4,8 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
+  <!-- Carrega SheetJS com fallback automático entre CDNs -->
+  <script src="https://jsdelivr.net"></script>
+  <script>
+    if (typeof XLSX === 'undefined') {
+      document.write('<script src="https://unpkg.com"><\/script>');
+    }
+  </script>
+  <script src="https://jsdelivr.net"></script>
   <style>
     :root {
       --vale-verde: #007600;
@@ -54,17 +60,19 @@
       border-radius: 6px;
       font-size: 0.88rem;
       background-color: #FFF;
-      min-width: 175px;
+      min-width: 180px;
     }
 
     .status-banner {
       margin: 0 30px 18px 30px;
-      padding: 10px 16px;
+      padding: 12px 16px;
       border-radius: 6px;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
+      font-weight: 600;
       display: none;
     }
     .status-banner.sucesso { display: block; background: #E6F4EA; color: #005A00; border: 1px solid #A7F3D0; }
+    .status-banner.aviso { display: block; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
     .status-banner.erro { display: block; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
 
     .kpi-grid {
@@ -152,7 +160,7 @@
     </div>
 
     <div class="control-group">
-      <label>3. Coluna de Data</label>
+      <label>3. Coluna de Data (Emissão)</label>
       <select id="selectColunaData">
         <option value="0">Aguardando arquivo...</option>
       </select>
@@ -230,7 +238,7 @@
       <tbody id="corpoTabela">
         <tr>
           <td colspan="7" style="text-align:center; padding: 25px; color: #64748B;">
-            Selecione a planilha de base acima para carregar os indicadores.
+            Selecione a planilha GERAL SAP acima para carregar os indicadores.
           </td>
         </tr>
       </tbody>
@@ -238,18 +246,18 @@
   </div>
 
 <script>
-  let workbookAtual = null;
-  let linhasBrutas = [];
-  let registrosProcessados = [];
-  let chartSemanal = null;
-  let chartItens = null;
+  var workbookAtual = null;
+  var linhasBrutas = [];
+  var registrosProcessados = [];
+  var chartSemanal = null;
+  var chartItens = null;
 
-  const inputExcel = document.getElementById('inputExcel');
-  const selectAba = document.getElementById('selectAba');
-  const selectColunaData = document.getElementById('selectColunaData');
-  const selectMes = document.getElementById('selectMes');
-  const selectSemana = document.getElementById('selectSemana');
-  const bannerFeedback = document.getElementById('bannerFeedback');
+  var inputExcel = document.getElementById('inputExcel');
+  var selectAba = document.getElementById('selectAba');
+  var selectColunaData = document.getElementById('selectColunaData');
+  var selectMes = document.getElementById('selectMes');
+  var selectSemana = document.getElementById('selectSemana');
+  var bannerFeedback = document.getElementById('bannerFeedback');
 
   function mostrarMensagem(texto, tipo) {
     bannerFeedback.textContent = texto;
@@ -257,7 +265,7 @@
   }
 
   function letraColuna(index) {
-    let letra = '';
+    var letra = '';
     while (index >= 0) {
       letra = String.fromCharCode((index % 26) + 65) + letra;
       index = Math.floor(index / 26) - 1;
@@ -268,36 +276,29 @@
   function converterNumeroBR(valor) {
     if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
     if (!valor) return 0;
-    let texto = String(valor).trim();
-    if (texto.includes(',') && texto.includes('.')) {
+    var texto = String(valor).trim();
+    if (texto.indexOf(',') !== -1 && texto.indexOf('.') !== -1) {
       texto = texto.replace(/\./g, '').replace(',', '.');
-    } else if (texto.includes(',')) {
+    } else if (texto.indexOf(',') !== -1) {
       texto = texto.replace(',', '.');
     }
-    const num = parseFloat(texto);
+    var num = parseFloat(texto);
     return isNaN(num) ? 0 : num;
   }
 
+  // Leitor nativo de CSV (funciona mesmo sem internet)
+  function parseCSVNativo(texto) {
+    var linhas = texto.split(/\r?\n/);
+    var separador = (linhas[0] && linhas[0].indexOf(';') !== -1) ? ';' : ',';
+    return linhas.map(function(linha) {
+      return linha.split(separador).map(function(cel) {
+        return cel.replace(/^"|"$/g, '').trim();
+      });
+    });
+  }
+
   inputExcel.addEventListener('change', function(e) {
-    const arquivos = e.target.files;
+    var arquivos = e.target.files;
     if (!arquivos || arquivos.length === 0) return;
-    const file = arquivos.item(0);
+    var file = arquivos[0];
 
-    if (typeof XLSX === 'undefined') {
-      mostrarMensagem('Erro: A biblioteca de leitura de Excel não pôde ser carregada. Verifique sua internet e recarregue a página.', 'erro');
-      return;
-    }
-
-    document.getElementById('statusArquivo').innerHTML = 'Arquivo: <strong>' + file.name + '</strong>';
-    mostrarMensagem('Lendo arquivo ' + file.name + ', aguarde...', 'sucesso');
-
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      try {
-        const data = new Uint8Array(evt.target.result);
-        workbookAtual = XLSX.read(data, { type: 'array', cellDates: true });
-
-        selectAba.innerHTML = '';
-        workbookAtual.SheetNames.forEach(function(nomeAba) {
-          const opt = document.createElement('option');
-          opt.value = nomeAba;
