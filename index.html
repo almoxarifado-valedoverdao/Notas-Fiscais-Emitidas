@@ -276,7 +276,7 @@
   </div>
 
 <script>
-  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v4';
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v5';
   var baseAcumulada = new Map();
 
   function mostrarMensagem(texto, tipo) {
@@ -286,10 +286,11 @@
   }
 
   function pegarItem(lista, indice) {
-    if (!lista || lista.length <= indice) return undefined;
-    return lista.slice(indice, indice + 1).pop();
+    if (!lista || lista.length <= indice || indice < 0) return undefined;
+    return lista[indice];
   }
 
   function carregarStorage() {
     try {
       var salvo = localStorage.getItem(CHAVE_STORAGE);
+      if (salvo) {
