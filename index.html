@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <!-- SheetJS para ler Excel (.xlsx / .xls / .csv) -->
-  <script src="https://jsdelivr.net"></script>
-  <!-- Chart.js para os gráficos -->
-  <script src="https://jsdelivr.net"></script>
+  <!-- Biblioteca SheetJS (CDNJS confiável) -->
+  <script src="https://cloudflare.com"></script>
+  <!-- Biblioteca Chart.js -->
+  <script src="https://cloudflare.com"></script>
   <style>
     :root {
       --vale-verde: #007600;
@@ -32,32 +32,42 @@
       box-shadow: 0 3px 8px rgba(0,0,0,0.15);
     }
     header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
-    header span { font-size: 0.85rem; opacity: 0.9; }
+    header span { font-size: 0.85rem; opacity: 0.95; }
 
     .controls-bar {
       background: var(--card-bg);
-      padding: 16px 30px;
+      padding: 18px 25px;
       margin: 20px 30px;
       border-radius: 8px;
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
+      gap: 16px;
       align-items: flex-end;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
       border-left: 5px solid var(--vale-verde);
     }
 
     .control-group { display: flex; flex-direction: column; gap: 6px; }
-    .control-group label { font-size: 0.78rem; font-weight: 700; color: var(--floresta-azul); text-transform: uppercase; }
+    .control-group label { font-size: 0.75rem; font-weight: 700; color: var(--floresta-azul); text-transform: uppercase; }
     
     input[type="file"], select {
       padding: 8px 12px;
       border: 1px solid #CBD5E1;
       border-radius: 6px;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       background-color: #FFF;
-      min-width: 190px;
+      min-width: 175px;
     }
+
+    .status-banner {
+      margin: 0 30px 18px 30px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .status-banner.sucesso { display: block; background: #E6F4EA; color: #005A00; border: 1px solid #A7F3D0; }
+    .status-banner.erro { display: block; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
 
     .kpi-grid {
       display: grid;
@@ -77,9 +87,9 @@
     .kpi-card.amarelo { border-top-color: var(--panorama-amarelo); }
     .kpi-card.laranja { border-top-color: var(--cambui-laranja); }
 
-    .kpi-title { font-size: 0.8rem; font-weight: 700; color: #64748B; text-transform: uppercase; }
+    .kpi-title { font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; }
     .kpi-value { font-size: 2.1rem; font-weight: 800; margin: 8px 0; color: var(--text-dark); }
-    .kpi-sub { font-size: 0.8rem; color: #64748B; }
+    .kpi-sub { font-size: 0.78rem; color: #64748B; }
 
     .charts-grid {
       display: grid;
@@ -96,7 +106,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
     }
     .panel h3 {
-      font-size: 1rem;
+      font-size: 0.98rem;
       color: var(--floresta-azul);
       margin-bottom: 15px;
       padding-bottom: 8px;
@@ -104,14 +114,14 @@
     }
 
     .table-container { margin: 0 30px 40px 30px; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th { background-color: var(--floresta-azul); color: white; text-align: left; padding: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { background-color: var(--floresta-azul); color: white; text-align: left; padding: 11px 12px; }
     td { padding: 10px 12px; border-bottom: 1px solid #E2E8F0; }
     tr:hover { background-color: #F8FAFC; }
     .badge {
       padding: 4px 10px;
       border-radius: 12px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 700;
     }
     .badge-verde { background: #E6F4EA; color: var(--vale-verde); }
@@ -138,26 +148,36 @@
     </div>
 
     <div class="control-group">
-      <label>Coluna de Data (Referência)</label>
-      <select id="selectColunaData">
-        <option value="0">Carregue o arquivo primeiro</option>
+      <label>2. Aba da Planilha</label>
+      <select id="selectAba">
+        <option value="">Aguardando arquivo...</option>
       </select>
     </div>
 
     <div class="control-group">
-      <label>Filtro 1: Mês de Emissão</label>
+      <label>3. Coluna de Data</label>
+      <select id="selectColunaData">
+        <option value="0">Aguardando arquivo...</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Filtro: Mês de Emissão</label>
       <select id="selectMes">
         <option value="TODOS">Todos os Meses</option>
       </select>
     </div>
 
     <div class="control-group">
-      <label>Filtro 2: Semana do Mês</label>
+      <label>Filtro: Semana do Mês</label>
       <select id="selectSemana">
         <option value="TODAS">Todas as Semanas</option>
       </select>
     </div>
   </div>
+
+  <!-- Banner de Feedback da Carga -->
+  <div id="bannerFeedback" class="status-banner"></div>
 
   <!-- Cards Indicadores -->
   <div class="kpi-grid">
@@ -225,15 +245,23 @@
   </div>
 
 <script>
+  let workbookAtual = null;
   let linhasBrutas = [];
   let registrosProcessados = [];
   let chartSemanal = null;
   let chartItens = null;
 
   const inputExcel = document.getElementById('inputExcel');
+  const selectAba = document.getElementById('selectAba');
   const selectColunaData = document.getElementById('selectColunaData');
   const selectMes = document.getElementById('selectMes');
   const selectSemana = document.getElementById('selectSemana');
+  const bannerFeedback = document.getElementById('bannerFeedback');
+
+  function mostrarMensagem(texto, tipo) {
+    bannerFeedback.textContent = texto;
+    bannerFeedback.className = `status-banner ${tipo}`;
+  }
 
   function letraColuna(index) {
     let letra = '';
@@ -244,59 +272,35 @@
     return letra;
   }
 
+  function converterNumeroBR(valor) {
+    if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
+    if (!valor) return 0;
+    let texto = String(valor).trim();
+    if (texto.includes(',') && texto.includes('.')) {
+      texto = texto.replace(/\./g, '').replace(',', '.');
+    } else if (texto.includes(',')) {
+      texto = texto.replace(',', '.');
+    }
+    const num = parseFloat(texto);
+    return isNaN(num) ? 0 : num;
+  }
+
   inputExcel.addEventListener('change', function(e) {
-    const file = e.target.files.item(0);
+    const file = e.target.files[0];
     if (!file) return;
 
+    if (typeof XLSX === 'undefined') {
+      mostrarMensagem('Erro: A biblioteca de leitura de Excel não pôde ser carregada. Verifique sua conexão com a internet e atualize a página.', 'erro');
+      return;
+    }
+
     document.getElementById('statusArquivo').innerHTML = `Arquivo: <strong>${file.name}</strong>`;
+    mostrarMensagem('Lendo arquivo, aguarde...', 'sucesso');
 
     const reader = new FileReader();
     reader.onload = function(evt) {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-      const primeiraAba = workbook.SheetNames.at(0);
-      const sheet = workbook.Sheets[primeiraAba];
-      const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      try {
+        const data = new Uint8Array(evt.target.result);
+        workbookAtual = XLSX.read(data, { type: 'array', cellDates: true });
 
-      if (json.length > 1) {
-        const cabecalhos = json.at(0);
-        linhasBrutas = json.slice(1);
-
-        selectColunaData.innerHTML = '';
-        let idxDataPadrao = 0;
-
-        cabecalhos.forEach((col, idx) => {
-          const opt = document.createElement('option');
-          opt.value = idx;
-          opt.textContent = `${letraColuna(idx)} - ${col || 'Sem título'}`;
-          selectColunaData.appendChild(opt);
-
-          const nomeCol = String(col).toLowerCase();
-          if (nomeCol.includes('data') || nomeCol.includes('emiss')) {
-            idxDataPadrao = idx;
-          }
-        });
-
-        selectColunaData.value = idxDataPadrao;
-        processarDados();
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-
-  selectColunaData.addEventListener('change', processarDados);
-  selectMes.addEventListener('change', atualizarDashboard);
-  selectSemana.addEventListener('change', atualizarDashboard);
-
-  function extrairMesESemana(valorData) {
-    let dataObj = null;
-
-    if (valorData instanceof Date && !isNaN(valorData)) {
-      dataObj = valorData;
-    } else if (typeof valorData === 'number' && valorData > 20000) {
-      dataObj = new Date(Math.round((valorData - 25569) * 86400 * 1000));
-    } else if (typeof valorData === 'string' && valorData.trim() !== '') {
-      const partesBR = valorData.trim().split('/');
-      if (partesBR.length === 3) {
-        dataObj = new Date(Number(partesBR.at(2)), Number(partesBR.at(1)) - 1, Number(partesBR.at(0)));
-      } else {
+        selectAba.innerHTML = '';
