@@ -4,13 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <!-- Carrega SheetJS com fallback automático entre CDNs -->
   <script src="https://jsdelivr.net"></script>
-  <script>
-    if (typeof XLSX === 'undefined') {
-      document.write('<script src="https://unpkg.com"><\/script>');
-    }
-  </script>
   <script src="https://jsdelivr.net"></script>
   <style>
     :root {
@@ -60,8 +54,21 @@
       border-radius: 6px;
       font-size: 0.88rem;
       background-color: #FFF;
-      min-width: 180px;
+      min-width: 170px;
     }
+
+    .btn-limpar {
+      background-color: #DC2626;
+      color: white;
+      border: none;
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-limpar:hover { background-color: #B91C1C; }
 
     .status-banner {
       margin: 0 30px 18px 30px;
@@ -139,16 +146,16 @@
   <header>
     <div>
       <h1>Controle de Remessa para Conserto (NFs)</h1>
-      <span>Grupo Vale do Verdão • Painel de Acompanhamento Mensal e Semanal</span>
+      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade</span>
     </div>
     <div>
-      <span id="statusArquivo">Aguardando arquivo de carga...</span>
+      <span id="statusArquivo">Base Acumulada: 0 registros</span>
     </div>
   </header>
 
   <div class="controls-bar">
     <div class="control-group">
-      <label>1. Arquivo de Carga (.XLSX / .CSV)</label>
+      <label>1. Adicionar Carga (.XLSX / .CSV)</label>
       <input type="file" id="inputExcel" accept=".xlsx, .xls, .csv" />
     </div>
 
@@ -179,6 +186,10 @@
         <option value="TODAS">Todas as Semanas</option>
       </select>
     </div>
+
+    <div class="control-group">
+      <button type="button" class="btn-limpar" id="btnLimparBase">Limpar Base Acumulada</button>
+    </div>
   </div>
 
   <div id="bannerFeedback" class="status-banner"></div>
@@ -187,7 +198,7 @@
     <div class="kpi-card">
       <div class="kpi-title">NFs Emitidas (Contagem Distinta)</div>
       <div class="kpi-value" id="kpiEmitidas">0</div>
-      <div class="kpi-sub">Coluna D • Remessas únicas no período</div>
+      <div class="kpi-sub">Coluna D • Remessas únicas acumuladas</div>
     </div>
 
     <div class="kpi-card azul">
@@ -222,7 +233,7 @@
   </div>
 
   <div class="panel table-container">
-    <h3>Resumo Consolidado por Mês e Semana</h3>
+    <h3>Resumo Consolidado Acumulado por Mês e Semana</h3>
     <table>
       <thead>
         <tr>
@@ -238,7 +249,7 @@
       <tbody id="corpoTabela">
         <tr>
           <td colspan="7" style="text-align:center; padding: 25px; color: #64748B;">
-            Selecione a planilha GERAL SAP acima para carregar os indicadores.
+            Selecione uma planilha acima para iniciar ou acumular dados.
           </td>
         </tr>
       </tbody>
@@ -246,9 +257,10 @@
   </div>
 
 <script>
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v1';
   var workbookAtual = null;
   var linhasBrutas = [];
-  var registrosProcessados = [];
+  var baseAcumulada = new Map();
   var chartSemanal = null;
   var chartItens = null;
 
@@ -258,47 +270,41 @@
   var selectMes = document.getElementById('selectMes');
   var selectSemana = document.getElementById('selectSemana');
   var bannerFeedback = document.getElementById('bannerFeedback');
+  var btnLimparBase = document.getElementById('btnLimparBase');
 
   function mostrarMensagem(texto, tipo) {
     bannerFeedback.textContent = texto;
     bannerFeedback.className = 'status-banner ' + tipo;
   }
 
-  function letraColuna(index) {
-    var letra = '';
-    while (index >= 0) {
-      letra = String.fromCharCode((index % 26) + 65) + letra;
-      index = Math.floor(index / 26) - 1;
+  function carregarStorage() {
+    try {
+      var salvo = localStorage.getItem(CHAVE_STORAGE);
+      if (salvo) {
+        var lista = JSON.parse(salvo);
+        baseAcumulada = new Map(lista);
+      }
+    } catch (e) {
+      baseAcumulada = new Map();
     }
-    return letra;
+    atualizarFiltrosEDashboard();
   }
 
-  function converterNumeroBR(valor) {
-    if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
-    if (!valor) return 0;
-    var texto = String(valor).trim();
-    if (texto.indexOf(',') !== -1 && texto.indexOf('.') !== -1) {
-      texto = texto.replace(/\./g, '').replace(',', '.');
-    } else if (texto.indexOf(',') !== -1) {
-      texto = texto.replace(',', '.');
+  function salvarStorage() {
+    try {
+      var lista = Array.from(baseAcumulada.entries());
+      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(lista));
+    } catch (e) {
+      mostrarMensagem('Aviso: Limite de armazenamento local atingido. Os dados atuais estão visíveis na sessão.', 'aviso');
     }
-    var num = parseFloat(texto);
-    return isNaN(num) ? 0 : num;
   }
 
-  // Leitor nativo de CSV (funciona mesmo sem internet)
-  function parseCSVNativo(texto) {
-    var linhas = texto.split(/\r?\n/);
-    var separador = (linhas[0] && linhas[0].indexOf(';') !== -1) ? ';' : ',';
-    return linhas.map(function(linha) {
-      return linha.split(separador).map(function(cel) {
-        return cel.replace(/^"|"$/g, '').trim();
-      });
-    });
-  }
-
-  inputExcel.addEventListener('change', function(e) {
-    var arquivos = e.target.files;
-    if (!arquivos || arquivos.length === 0) return;
-    var file = arquivos[0];
-
+  btnLimparBase.addEventListener('click', function() {
+    if (confirm('Deseja realmente apagar todos os dados acumulados e zerar o painel?')) {
+      baseAcumulada.clear();
+      localStorage.removeItem(CHAVE_STORAGE);
+      inputExcel.value = '';
+      mostrarMensagem('Base acumulada limpa com sucesso!', 'aviso');
+      atualizarFiltrosEDashboard();
+    }
+  });
