@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <!-- Biblioteca SheetJS (CDNJS confiável) -->
   <script src="https://cloudflare.com"></script>
-  <!-- Biblioteca Chart.js -->
   <script src="https://cloudflare.com"></script>
   <style>
     :root {
@@ -140,7 +138,6 @@
     </div>
   </header>
 
-  <!-- Barra de Carga e Filtros -->
   <div class="controls-bar">
     <div class="control-group">
       <label>1. Arquivo de Carga (.XLSX / .CSV)</label>
@@ -176,10 +173,8 @@
     </div>
   </div>
 
-  <!-- Banner de Feedback da Carga -->
   <div id="bannerFeedback" class="status-banner"></div>
 
-  <!-- Cards Indicadores -->
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-title">NFs Emitidas (Contagem Distinta)</div>
@@ -206,7 +201,6 @@
     </div>
   </div>
 
-  <!-- Gráficos -->
   <div class="charts-grid">
     <div class="panel">
       <h3>Comparativo Semanal: NFs Emitidas (Col. D) vs. NFs Retornadas (Col. J)</h3>
@@ -219,7 +213,6 @@
     </div>
   </div>
 
-  <!-- Tabela Detalhada por Mês e Semana -->
   <div class="panel table-container">
     <h3>Resumo Consolidado por Mês e Semana</h3>
     <table>
@@ -260,7 +253,7 @@
 
   function mostrarMensagem(texto, tipo) {
     bannerFeedback.textContent = texto;
-    bannerFeedback.className = `status-banner ${tipo}`;
+    bannerFeedback.className = 'status-banner ' + tipo;
   }
 
   function letraColuna(index) {
@@ -286,16 +279,17 @@
   }
 
   inputExcel.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const arquivos = e.target.files;
+    if (!arquivos || arquivos.length === 0) return;
+    const file = arquivos.item(0);
 
     if (typeof XLSX === 'undefined') {
-      mostrarMensagem('Erro: A biblioteca de leitura de Excel não pôde ser carregada. Verifique sua conexão com a internet e atualize a página.', 'erro');
+      mostrarMensagem('Erro: A biblioteca de leitura de Excel não pôde ser carregada. Verifique sua internet e recarregue a página.', 'erro');
       return;
     }
 
-    document.getElementById('statusArquivo').innerHTML = `Arquivo: <strong>${file.name}</strong>`;
-    mostrarMensagem('Lendo arquivo, aguarde...', 'sucesso');
+    document.getElementById('statusArquivo').innerHTML = 'Arquivo: <strong>' + file.name + '</strong>';
+    mostrarMensagem('Lendo arquivo ' + file.name + ', aguarde...', 'sucesso');
 
     const reader = new FileReader();
     reader.onload = function(evt) {
@@ -304,3 +298,6 @@
         workbookAtual = XLSX.read(data, { type: 'array', cellDates: true });
 
         selectAba.innerHTML = '';
+        workbookAtual.SheetNames.forEach(function(nomeAba) {
+          const opt = document.createElement('option');
+          opt.value = nomeAba;
