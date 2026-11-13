@@ -28,7 +28,7 @@
       align-items: center;
       box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
-    header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: 0.3px; }
+    header h1 { font-size: 1.45rem; font-weight: 700; }
     header span { font-size: 0.85rem; opacity: 0.92; display: block; margin-top: 2px; }
     .badge-header {
       background: rgba(255,255,255,0.18);
@@ -36,7 +36,6 @@
       border-radius: 20px;
       font-size: 0.85rem;
       font-weight: 600;
-      backdrop-filter: blur(4px);
     }
 
     .controls-bar {
@@ -46,25 +45,23 @@
       border-radius: 10px;
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 18px;
       align-items: flex-end;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border-left: 6px solid var(--vale-verde);
     }
 
     .control-group { display: flex; flex-direction: column; gap: 6px; }
-    .control-group label { font-size: 0.74rem; font-weight: 700; color: var(--floresta-azul); text-transform: uppercase; letter-spacing: 0.4px; }
+    .control-group label { font-size: 0.74rem; font-weight: 700; color: var(--floresta-azul); text-transform: uppercase; }
     
-    input[type="file"], select {
+    select {
       padding: 9px 12px;
       border: 1px solid var(--border-color);
       border-radius: 6px;
       font-size: 0.88rem;
       background-color: #FFF;
-      min-width: 180px;
-      transition: border-color 0.2s;
+      min-width: 190px;
     }
-    input[type="file"]:focus, select:focus { outline: none; border-color: var(--vale-verde); }
 
     .btn {
       border: none;
@@ -73,18 +70,11 @@
       font-size: 0.86rem;
       font-weight: 700;
       cursor: pointer;
-      transition: transform 0.1s, background-color 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
     }
-    .btn:active { transform: scale(0.98); }
-    .btn-carregar { background-color: var(--vale-verde); color: white; }
-    .btn-carregar:hover { background-color: #005A00; }
-    .btn-exportar { background-color: var(--floresta-azul); color: white; }
+    .btn-recarregar { background-color: var(--vale-verde); color: white; }
+    .btn-recarregar:hover { background-color: #005A00; }
+    .btn-exportar { background-color: var(--floresta-azul); color: white; margin-left: auto; }
     .btn-exportar:hover { background-color: #163859; }
-    .btn-limpar { background-color: #DC2626; color: white; margin-left: auto; }
-    .btn-limpar:hover { background-color: #B91C1C; }
 
     .status-banner {
       margin: 0 30px 20px 30px;
@@ -92,13 +82,11 @@
       border-radius: 8px;
       font-size: 0.9rem;
       font-weight: 600;
-      background: #E2E8F0;
-      color: #334155;
-      border: 1px solid #CBD5E1;
-      transition: all 0.25s ease;
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FCD34D;
     }
     .status-banner.sucesso { background: #E6F4EA; color: #005A00; border-color: #86EFAC; }
-    .status-banner.aviso { background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
     .status-banner.erro { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
 
     .kpi-grid {
@@ -148,10 +136,10 @@
     .bar-row { margin-bottom: 15px; }
     .bar-label { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 5px; }
     .bar-track { background: #E2E8F0; height: 11px; border-radius: 6px; overflow: hidden; }
-    .bar-fill-verde { background: var(--vale-verde); height: 100%; transition: width 0.4s ease; }
-    .bar-fill-azul { background: var(--floresta-azul); height: 100%; transition: width 0.4s ease; }
-    .bar-fill-laranja { background: var(--cambui-laranja); height: 100%; transition: width 0.4s ease; }
-    .bar-fill-amarelo { background: var(--panorama-amarelo); height: 100%; transition: width 0.4s ease; }
+    .bar-fill-verde { background: var(--vale-verde); height: 100%; }
+    .bar-fill-azul { background: var(--floresta-azul); height: 100%; }
+    .bar-fill-laranja { background: var(--cambui-laranja); height: 100%; }
+    .bar-fill-amarelo { background: var(--panorama-amarelo); height: 100%; }
     .legenda { display: flex; gap: 16px; font-size: 0.78rem; margin-bottom: 14px; color: #475569; font-weight: 600; }
     .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
 
@@ -176,49 +164,40 @@
   <header>
     <div>
       <h1>Controle de Remessa para Conserto (NFs)</h1>
-      <span>Grupo Vale do Verdão • Nível Argon v9.0 (IndexedDB + Motor SAP Nativo)</span>
+      <span>Grupo Vale do Verdão • Base Integrada GitHub (v10.0)</span>
     </div>
-    <div class="badge-header" id="statusArquivo">Base Acumulada: 0 registros</div>
+    <div class="badge-header" id="statusArquivo">Carregando base_sap.csv...</div>
   </header>
 
   <div class="controls-bar">
     <div class="control-group">
-      <label>1. Selecione a Planilha (.XLSX ou .CSV)</label>
-      <input type="file" id="inputExcel" accept=".xlsx, .xls, .csv" />
-    </div>
-
-    <div class="control-group">
-      <button type="button" class="btn btn-carregar" id="btnEfetuarCarga">EFETUAR CARGA</button>
-    </div>
-
-    <div class="control-group">
-      <label>Filtrar Mês</label>
+      <label>Filtrar Mês de Emissão</label>
       <select id="selectMes">
         <option value="TODOS">Todos os Meses</option>
       </select>
     </div>
 
     <div class="control-group">
-      <label>Filtrar Semana</label>
+      <label>Filtrar Semana do Mês</label>
       <select id="selectSemana">
         <option value="TODAS">Todas as Semanas</option>
       </select>
     </div>
 
     <div class="control-group">
-      <button type="button" class="btn btn-exportar" id="btnExportar">Exportar Resumo</button>
+      <button type="button" class="btn btn-recarregar" id="btnAtualizar">Atualizar Dados do GitHub</button>
     </div>
 
-    <button type="button" class="btn btn-limpar" id="btnLimparBase">Zerar Base</button>
+    <button type="button" class="btn btn-exportar" id="btnExportar">Exportar Resumo (.CSV)</button>
   </div>
 
-  <div id="bannerFeedback" class="status-banner">✅ Motor Argon v9.0 pronto. Selecione sua planilha (.XLSX ou .CSV) e clique em EFETUAR CARGA.</div>
+  <div id="bannerFeedback" class="status-banner">⏳ Buscando arquivo "base_sap.csv" dentro do repositório GitHub...</div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-title">NFs Emitidas (Contagem Distinta)</div>
       <div class="kpi-value" id="kpiEmitidas">0</div>
-      <div class="kpi-sub">Coluna D • Remessas únicas acumuladas</div>
+      <div class="kpi-sub">Coluna D • Remessas únicas no período</div>
     </div>
 
     <div class="kpi-card azul">
@@ -261,7 +240,7 @@
   </div>
 
   <div class="panel table-container">
-    <h3>Resumo Consolidado Acumulado por Mês e Semana</h3>
+    <h3>Resumo Consolidado por Mês e Semana</h3>
     <table>
       <thead>
         <tr>
@@ -273,3 +252,38 @@
           <th>Qtd. Itens (Soma - Col. H)</th>
           <th>Status Retorno</th>
         </tr>
+      </thead>
+      <tbody id="corpoTabela">
+        <tr>
+          <td colspan="7" style="text-align:center; padding: 25px; color: #64748B;">
+            Aguardando leitura do arquivo base_sap.csv...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+<script>
+  var registrosUnicos = [];
+  var ultimoResumoExportacao = [];
+
+  function mostrarMensagem(texto, tipo) {
+    var banner = document.getElementById('bannerFeedback');
+    banner.textContent = texto;
+    banner.className = 'status-banner ' + tipo;
+  }
+
+  function pegar(lista, indice) {
+    if (!lista || indice < 0 || lista.length <= indice) return undefined;
+    return lista.slice(indice, indice + 1).pop();
+  }
+
+  function converterNumeroBR(valor) {
+    if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
+    if (!valor) return 0;
+    var texto = String(valor).trim();
+    if (texto.indexOf(',') !== -1 && texto.indexOf('.') !== -1) {
+      texto = texto.replace(/\./g, '').replace(',', '.');
+    } else if (texto.indexOf(',') !== -1) {
+      texto = texto.replace(',', '.');
+    }
