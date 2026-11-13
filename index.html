@@ -169,7 +169,7 @@
   <header>
     <div>
       <h1>Controle de Remessa para Conserto (NFs)</h1>
-      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade</span>
+      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade (v7.0)</span>
     </div>
     <div>
       <span id="statusArquivo">Base Acumulada: 0 registros</span>
@@ -183,27 +183,27 @@
     </div>
 
     <div class="control-group">
-      <button type="button" class="btn-carregar" id="btnEfetuarCarga" onclick="iniciarLeituraArquivo()">EFETUAR CARGA</button>
+      <button type="button" class="btn-carregar" id="btnEfetuarCarga">EFETUAR CARGA</button>
     </div>
 
     <div class="control-group">
       <label>Filtrar Mês</label>
-      <select id="selectMes" onchange="atualizarDashboard()">
+      <select id="selectMes">
         <option value="TODOS">Todos os Meses</option>
       </select>
     </div>
 
     <div class="control-group">
       <label>Filtrar Semana</label>
-      <select id="selectSemana" onchange="atualizarDashboard()">
+      <select id="selectSemana">
         <option value="TODAS">Todas as Semanas</option>
       </select>
     </div>
 
-    <button type="button" class="btn-limpar" id="btnLimparBase" onclick="zerarBase()">Zerar Base</button>
+    <button type="button" class="btn-limpar" id="btnLimparBase">Zerar Base</button>
   </div>
 
-  <div id="bannerFeedback" class="status-banner">Sistema pronto. Selecione sua planilha GERAL SAP (.XLSX ou .CSV) e clique em EFETUAR CARGA.</div>
+  <div id="bannerFeedback" class="status-banner">✅ Sistema v7.0 ativo. Selecione sua planilha (.XLSX ou .CSV) e clique em EFETUAR CARGA.</div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
@@ -276,7 +276,15 @@
   </div>
 
 <script>
-  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v6';
+  window.onerror = function(msg, url, line) {
+    var b = document.getElementById('bannerFeedback');
+    if (b) {
+      b.textContent = 'Erro técnico na linha ' + line + ': ' + msg;
+      b.className = 'status-banner erro';
+    }
+  };
+
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v7';
   var baseAcumulada = new Map();
 
   function mostrarMensagem(texto, tipo) {
@@ -287,9 +295,3 @@
 
   function pegar(lista, indice) {
     if (!lista || indice < 0 || lista.length <= indice) return undefined;
-    return lista.slice(indice, indice + 1).pop();
-  }
-
-  function carregarStorage() {
-    try {
-      var salvo = localStorage.getItem(CHAVE_STORAGE);
