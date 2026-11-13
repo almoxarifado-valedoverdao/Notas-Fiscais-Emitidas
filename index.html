@@ -59,7 +59,7 @@
       background-color: var(--vale-verde);
       color: white;
       border: none;
-      padding: 10px 20px;
+      padding: 10px 22px;
       border-radius: 6px;
       font-size: 0.88rem;
       font-weight: 700;
@@ -82,15 +82,18 @@
 
     .status-banner {
       margin: 0 30px 18px 30px;
-      padding: 12px 16px;
+      padding: 14px 18px;
       border-radius: 6px;
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       font-weight: 600;
-      display: none;
+      display: block;
+      background: #E2E8F0;
+      color: #334155;
+      border: 1px solid #CBD5E1;
     }
-    .status-banner.sucesso { display: block; background: #E6F4EA; color: #005A00; border: 1px solid #A7F3D0; }
-    .status-banner.aviso { display: block; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
-    .status-banner.erro { display: block; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+    .status-banner.sucesso { background: #E6F4EA; color: #005A00; border: 1px solid #A7F3D0; }
+    .status-banner.aviso { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+    .status-banner.erro { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
 
     .kpi-grid {
       display: grid;
@@ -166,7 +169,7 @@
   <header>
     <div>
       <h1>Controle de Remessa para Conserto (NFs)</h1>
-      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade (100% Interno)</span>
+      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade</span>
     </div>
     <div>
       <span id="statusArquivo">Base Acumulada: 0 registros</span>
@@ -180,27 +183,27 @@
     </div>
 
     <div class="control-group">
-      <button type="button" class="btn-carregar" id="btnEfetuarCarga">EFETUAR CARGA</button>
+      <button type="button" class="btn-carregar" id="btnEfetuarCarga" onclick="iniciarLeituraArquivo()">EFETUAR CARGA</button>
     </div>
 
     <div class="control-group">
       <label>Filtrar Mês</label>
-      <select id="selectMes">
+      <select id="selectMes" onchange="atualizarDashboard()">
         <option value="TODOS">Todos os Meses</option>
       </select>
     </div>
 
     <div class="control-group">
       <label>Filtrar Semana</label>
-      <select id="selectSemana">
+      <select id="selectSemana" onchange="atualizarDashboard()">
         <option value="TODAS">Todas as Semanas</option>
       </select>
     </div>
 
-    <button type="button" class="btn-limpar" id="btnLimparBase">Zerar Base</button>
+    <button type="button" class="btn-limpar" id="btnLimparBase" onclick="zerarBase()">Zerar Base</button>
   </div>
 
-  <div id="bannerFeedback" class="status-banner"></div>
+  <div id="bannerFeedback" class="status-banner">Sistema pronto. Selecione sua planilha GERAL SAP (.XLSX ou .CSV) e clique em EFETUAR CARGA.</div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
@@ -273,22 +276,20 @@
   </div>
 
 <script>
-  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_interno_v1';
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v4';
   var baseAcumulada = new Map();
 
-  var inputExcel = document.getElementById('inputExcel');
-  var btnEfetuarCarga = document.getElementById('btnEfetuarCarga');
-  var selectMes = document.getElementById('selectMes');
-  var selectSemana = document.getElementById('selectSemana');
-  var bannerFeedback = document.getElementById('bannerFeedback');
-  var btnLimparBase = document.getElementById('btnLimparBase');
-
   function mostrarMensagem(texto, tipo) {
-    bannerFeedback.textContent = texto;
-    bannerFeedback.className = 'status-banner ' + tipo;
+    var banner = document.getElementById('bannerFeedback');
+    banner.textContent = texto;
+    banner.className = 'status-banner ' + tipo;
+  }
+
+  function pegarItem(lista, indice) {
+    if (!lista || lista.length <= indice) return undefined;
+    return lista.slice(indice, indice + 1).pop();
   }
 
   function carregarStorage() {
     try {
       var salvo = localStorage.getItem(CHAVE_STORAGE);
-      if (salvo) {
