@@ -4,8 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <script src="https://jsdelivr.net"></script>
-  <script src="https://jsdelivr.net"></script>
+  <!-- Carrega leitor de Excel com 3 servidores de redundância -->
+  <script src="https://cloudflare.com"></script>
+  <script>
+    if (typeof XLSX === 'undefined') {
+      document.write('<script src="https://jsdelivr.net"><\/script>');
+    }
+  </script>
+  <script>
+    if (typeof XLSX === 'undefined') {
+      document.write('<script src="https://unpkg.com"><\/script>');
+    }
+  </script>
+  <script src="https://cloudflare.com"></script>
   <style>
     :root {
       --vale-verde: #007600;
@@ -39,7 +50,7 @@
       border-radius: 8px;
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 18px;
       align-items: flex-end;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
       border-left: 5px solid var(--vale-verde);
@@ -54,19 +65,33 @@
       border-radius: 6px;
       font-size: 0.88rem;
       background-color: #FFF;
-      min-width: 170px;
+      min-width: 185px;
     }
+
+    .btn-carregar {
+      background-color: var(--vale-verde);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-carregar:hover { background-color: #005A00; }
 
     .btn-limpar {
       background-color: #DC2626;
       color: white;
       border: none;
-      padding: 9px 14px;
+      padding: 10px 14px;
       border-radius: 6px;
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
       transition: 0.2s;
+      margin-left: auto;
     }
     .btn-limpar:hover { background-color: #B91C1C; }
 
@@ -74,7 +99,7 @@
       margin: 0 30px 18px 30px;
       padding: 12px 16px;
       border-radius: 6px;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       font-weight: 600;
       display: none;
     }
@@ -155,41 +180,29 @@
 
   <div class="controls-bar">
     <div class="control-group">
-      <label>1. Adicionar Carga (.XLSX / .CSV)</label>
+      <label>1. Selecione o Arquivo (.XLSX ou .CSV)</label>
       <input type="file" id="inputExcel" accept=".xlsx, .xls, .csv" />
     </div>
 
     <div class="control-group">
-      <label>2. Aba da Planilha</label>
-      <select id="selectAba">
-        <option value="">Aguardando arquivo...</option>
-      </select>
+      <button type="button" class="btn-carregar" id="btnEfetuarCarga">EFETUAR CARGA</button>
     </div>
 
     <div class="control-group">
-      <label>3. Coluna de Data (Emissão)</label>
-      <select id="selectColunaData">
-        <option value="0">Aguardando arquivo...</option>
-      </select>
-    </div>
-
-    <div class="control-group">
-      <label>Filtro: Mês de Emissão</label>
+      <label>Filtrar Mês</label>
       <select id="selectMes">
         <option value="TODOS">Todos os Meses</option>
       </select>
     </div>
 
     <div class="control-group">
-      <label>Filtro: Semana do Mês</label>
+      <label>Filtrar Semana</label>
       <select id="selectSemana">
         <option value="TODAS">Todas as Semanas</option>
       </select>
     </div>
 
-    <div class="control-group">
-      <button type="button" class="btn-limpar" id="btnLimparBase">Limpar Base Acumulada</button>
-    </div>
+    <button type="button" class="btn-limpar" id="btnLimparBase">Zerar Base</button>
   </div>
 
   <div id="bannerFeedback" class="status-banner"></div>
@@ -249,7 +262,7 @@
       <tbody id="corpoTabela">
         <tr>
           <td colspan="7" style="text-align:center; padding: 25px; color: #64748B;">
-            Selecione uma planilha acima para iniciar ou acumular dados.
+            Selecione o arquivo acima e clique em EFETUAR CARGA.
           </td>
         </tr>
       </tbody>
@@ -257,16 +270,13 @@
   </div>
 
 <script>
-  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v1';
-  var workbookAtual = null;
-  var linhasBrutas = [];
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v2';
   var baseAcumulada = new Map();
   var chartSemanal = null;
   var chartItens = null;
 
   var inputExcel = document.getElementById('inputExcel');
-  var selectAba = document.getElementById('selectAba');
-  var selectColunaData = document.getElementById('selectColunaData');
+  var btnEfetuarCarga = document.getElementById('btnEfetuarCarga');
   var selectMes = document.getElementById('selectMes');
   var selectSemana = document.getElementById('selectSemana');
   var bannerFeedback = document.getElementById('bannerFeedback');
@@ -281,8 +291,7 @@
     try {
       var salvo = localStorage.getItem(CHAVE_STORAGE);
       if (salvo) {
-        var lista = JSON.parse(salvo);
-        baseAcumulada = new Map(lista);
+        baseAcumulada = new Map(JSON.parse(salvo));
       }
     } catch (e) {
       baseAcumulada = new Map();
@@ -292,19 +301,10 @@
 
   function salvarStorage() {
     try {
-      var lista = Array.from(baseAcumulada.entries());
-      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(lista));
+      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(Array.from(baseAcumulada.entries())));
     } catch (e) {
-      mostrarMensagem('Aviso: Limite de armazenamento local atingido. Os dados atuais estão visíveis na sessão.', 'aviso');
+      mostrarMensagem('Aviso: Limite de memória do navegador atingido. Os dados atuais estão visíveis na tela.', 'aviso');
     }
   }
 
   btnLimparBase.addEventListener('click', function() {
-    if (confirm('Deseja realmente apagar todos os dados acumulados e zerar o painel?')) {
-      baseAcumulada.clear();
-      localStorage.removeItem(CHAVE_STORAGE);
-      inputExcel.value = '';
-      mostrarMensagem('Base acumulada limpa com sucesso!', 'aviso');
-      atualizarFiltrosEDashboard();
-    }
-  });
