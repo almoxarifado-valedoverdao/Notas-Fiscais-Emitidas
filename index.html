@@ -4,19 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <!-- Carrega leitor de Excel com 3 servidores de redundância -->
-  <script src="https://cloudflare.com"></script>
-  <script>
-    if (typeof XLSX === 'undefined') {
-      document.write('<script src="https://jsdelivr.net"><\/script>');
-    }
-  </script>
-  <script>
-    if (typeof XLSX === 'undefined') {
-      document.write('<script src="https://unpkg.com"><\/script>');
-    }
-  </script>
-  <script src="https://cloudflare.com"></script>
+  <!-- Lê o arquivo local do seu próprio repositório no GitHub -->
+  <script src="./xlsx.full.min.js"></script>
   <style>
     :root {
       --vale-verde: #007600;
@@ -72,12 +61,11 @@
       background-color: var(--vale-verde);
       color: white;
       border: none;
-      padding: 10px 18px;
+      padding: 10px 20px;
       border-radius: 6px;
       font-size: 0.88rem;
       font-weight: 700;
       cursor: pointer;
-      transition: 0.2s;
     }
     .btn-carregar:hover { background-color: #005A00; }
 
@@ -90,7 +78,6 @@
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
-      transition: 0.2s;
       margin-left: auto;
     }
     .btn-limpar:hover { background-color: #B91C1C; }
@@ -150,6 +137,17 @@
       padding-bottom: 8px;
       border-bottom: 1px solid #E2E8F0;
     }
+
+    /* Barras visuais nativas (100% leves e sem depender de biblioteca externa) */
+    .bar-row { margin-bottom: 14px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px; }
+    .bar-track { background: #E2E8F0; height: 12px; border-radius: 6px; overflow: hidden; display: flex; gap: 2px; }
+    .bar-fill-verde { background: var(--vale-verde); height: 100%; }
+    .bar-fill-azul { background: var(--floresta-azul); height: 100%; }
+    .bar-fill-laranja { background: var(--cambui-laranja); height: 100%; }
+    .bar-fill-amarelo { background: var(--panorama-amarelo); height: 100%; }
+    .legenda { display: flex; gap: 15px; font-size: 0.78rem; margin-bottom: 12px; color: #475569; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
 
     .table-container { margin: 0 30px 40px 30px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
@@ -236,12 +234,20 @@
   <div class="charts-grid">
     <div class="panel">
       <h3>Comparativo Semanal: NFs Emitidas (Col. D) vs. NFs Retornadas (Col. J)</h3>
-      <canvas id="graficoSemanal" height="120"></canvas>
+      <div class="legenda">
+        <span><i class="dot" style="background:#007600"></i>NFs Emitidas (Col. D)</span>
+        <span><i class="dot" style="background:#1F4E79"></i>NFs Retornadas (Col. J)</span>
+      </div>
+      <div id="graficoSemanalNativo"></div>
     </div>
 
     <div class="panel">
       <h3>Volume de Itens (Col. H) vs. Qtd. Retorno (Col. O)</h3>
-      <canvas id="graficoItens" height="185"></canvas>
+      <div class="legenda">
+        <span><i class="dot" style="background:#ED7D31"></i>Qtd. Itens (Col. H)</span>
+        <span><i class="dot" style="background:#FFC000"></i>Qtd. NF Retorno (Col. O)</span>
+      </div>
+      <div id="graficoItensNativo"></div>
     </div>
   </div>
 
@@ -270,10 +276,8 @@
   </div>
 
 <script>
-  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v2';
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v3';
   var baseAcumulada = new Map();
-  var chartSemanal = null;
-  var chartItens = null;
 
   var inputExcel = document.getElementById('inputExcel');
   var btnEfetuarCarga = document.getElementById('btnEfetuarCarga');
@@ -284,27 +288,3 @@
 
   function mostrarMensagem(texto, tipo) {
     bannerFeedback.textContent = texto;
-    bannerFeedback.className = 'status-banner ' + tipo;
-  }
-
-  function carregarStorage() {
-    try {
-      var salvo = localStorage.getItem(CHAVE_STORAGE);
-      if (salvo) {
-        baseAcumulada = new Map(JSON.parse(salvo));
-      }
-    } catch (e) {
-      baseAcumulada = new Map();
-    }
-    atualizarFiltrosEDashboard();
-  }
-
-  function salvarStorage() {
-    try {
-      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(Array.from(baseAcumulada.entries())));
-    } catch (e) {
-      mostrarMensagem('Aviso: Limite de memória do navegador atingido. Os dados atuais estão visíveis na tela.', 'aviso');
-    }
-  }
-
-  btnLimparBase.addEventListener('click', function() {
