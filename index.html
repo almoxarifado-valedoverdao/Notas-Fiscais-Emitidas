@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
-  <!-- Lê o arquivo local do seu próprio repositório no GitHub -->
-  <script src="./xlsx.full.min.js"></script>
   <style>
     :root {
       --vale-verde: #007600;
@@ -138,7 +136,6 @@
       border-bottom: 1px solid #E2E8F0;
     }
 
-    /* Barras visuais nativas (100% leves e sem depender de biblioteca externa) */
     .bar-row { margin-bottom: 14px; }
     .bar-label { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px; }
     .bar-track { background: #E2E8F0; height: 12px; border-radius: 6px; overflow: hidden; display: flex; gap: 2px; }
@@ -169,7 +166,7 @@
   <header>
     <div>
       <h1>Controle de Remessa para Conserto (NFs)</h1>
-      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade</span>
+      <span>Grupo Vale do Verdão • Base Acumulativa Sem Duplicidade (100% Interno)</span>
     </div>
     <div>
       <span id="statusArquivo">Base Acumulada: 0 registros</span>
@@ -178,8 +175,8 @@
 
   <div class="controls-bar">
     <div class="control-group">
-      <label>1. Selecione o Arquivo (.XLSX ou .CSV)</label>
-      <input type="file" id="inputExcel" accept=".xlsx, .xls, .csv" />
+      <label>1. Selecione a Planilha (.XLSX ou .CSV)</label>
+      <input type="file" id="inputExcel" accept=".xlsx, .csv" />
     </div>
 
     <div class="control-group">
@@ -276,7 +273,7 @@
   </div>
 
 <script>
-  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_v3';
+  var CHAVE_STORAGE = 'vale_verdao_remessa_nfs_interno_v1';
   var baseAcumulada = new Map();
 
   var inputExcel = document.getElementById('inputExcel');
@@ -288,3 +285,10 @@
 
   function mostrarMensagem(texto, tipo) {
     bannerFeedback.textContent = texto;
+    bannerFeedback.className = 'status-banner ' + tipo;
+  }
+
+  function carregarStorage() {
+    try {
+      var salvo = localStorage.getItem(CHAVE_STORAGE);
+      if (salvo) {
