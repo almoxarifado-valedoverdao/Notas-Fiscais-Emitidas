@@ -3,11 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Remessa para Conserto - Grupo Vale do Verdão</title>
-  <!-- Vue 3 -->
-  <script src="https://unpkg.com"></script>
+  <title>Controle de Remessa para Conserto - Grupo Vale do Verdão</title>
   <!-- SheetJS para ler Excel (.xlsx / .xls / .csv) -->
-  <script src="https://sheetjs.com"></script>
+  <script src="https://jsdelivr.net"></script>
   <!-- Chart.js para os gráficos -->
   <script src="https://jsdelivr.net"></script>
   <style>
@@ -24,7 +22,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: var(--bg-light); color: var(--text-dark); }
 
-    /* Cabeçalho */
     header {
       background: linear-gradient(90deg, var(--vale-verde) 0%, var(--floresta-azul) 100%);
       color: white;
@@ -37,7 +34,6 @@
     header h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
     header span { font-size: 0.85rem; opacity: 0.9; }
 
-    /* Barra de Upload e Filtros */
     .controls-bar {
       background: var(--card-bg);
       padding: 16px 30px;
@@ -52,7 +48,7 @@
     }
 
     .control-group { display: flex; flex-direction: column; gap: 6px; }
-    .control-group label { font-size: 0.8rem; font-weight: 700; color: var(--floresta-azul); text-transform: uppercase; }
+    .control-group label { font-size: 0.78rem; font-weight: 700; color: var(--floresta-azul); text-transform: uppercase; }
     
     input[type="file"], select {
       padding: 8px 12px;
@@ -60,26 +56,12 @@
       border-radius: 6px;
       font-size: 0.9rem;
       background-color: #FFF;
-      min-width: 180px;
+      min-width: 190px;
     }
 
-    .btn-upload {
-      background-color: var(--vale-verde);
-      color: white;
-      padding: 9px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9rem;
-      border: none;
-      transition: 0.2s;
-    }
-    .btn-upload:hover { background-color: #005a00; }
-
-    /* Cards KPI */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 20px;
       margin: 0 30px 25px 30px;
     }
@@ -95,14 +77,13 @@
     .kpi-card.amarelo { border-top-color: var(--panorama-amarelo); }
     .kpi-card.laranja { border-top-color: var(--cambui-laranja); }
 
-    .kpi-title { font-size: 0.82rem; font-weight: 700; color: #64748B; text-transform: uppercase; }
-    .kpi-value { font-size: 2rem; font-weight: 800; margin: 8px 0; color: var(--text-dark); }
+    .kpi-title { font-size: 0.8rem; font-weight: 700; color: #64748B; text-transform: uppercase; }
+    .kpi-value { font-size: 2.1rem; font-weight: 800; margin: 8px 0; color: var(--text-dark); }
     .kpi-sub { font-size: 0.8rem; color: #64748B; }
 
-    /* Gráficos e Tabela */
     .charts-grid {
       display: grid;
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns: 1.5fr 1fr;
       gap: 20px;
       margin: 0 30px 25px 30px;
     }
@@ -122,14 +103,13 @@
       border-bottom: 1px solid #E2E8F0;
     }
 
-    /* Tabela Resumo */
     .table-container { margin: 0 30px 40px 30px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     th { background-color: var(--floresta-azul); color: white; text-align: left; padding: 12px; }
     td { padding: 10px 12px; border-bottom: 1px solid #E2E8F0; }
     tr:hover { background-color: #F8FAFC; }
     .badge {
-      padding: 4px 8px;
+      padding: 4px 10px;
       border-radius: 12px;
       font-size: 0.78rem;
       font-weight: 700;
@@ -140,46 +120,41 @@
 </head>
 <body>
 
-<div id="app">
   <header>
     <div>
       <h1>Controle de Remessa para Conserto (NFs)</h1>
       <span>Grupo Vale do Verdão • Painel de Acompanhamento Mensal e Semanal</span>
     </div>
     <div>
-      <span v-if="arquivoNome">Arquivo: <strong>{{ arquivoNome }}</strong></span>
+      <span id="statusArquivo">Aguardando arquivo de carga...</span>
     </div>
   </header>
 
   <!-- Barra de Carga e Filtros -->
   <div class="controls-bar">
     <div class="control-group">
-      <label>1. Arquivo de Carga (.xlsx / .csv)</label>
-      <input type="file" @change="lerArquivoExcel" accept=".xlsx, .xls, .csv" />
+      <label>1. Arquivo de Carga (.XLSX / .CSV)</label>
+      <input type="file" id="inputExcel" accept=".xlsx, .xls, .csv" />
     </div>
 
     <div class="control-group">
       <label>Coluna de Data (Referência)</label>
-      <select v-model="colunaDataSelecionada" @change="processarDados">
-        <option v-for="(col, idx) in cabecalhos" :key="idx" :value="idx">
-          {{ letraColuna(idx) }} - {{ col || 'Sem título' }}
-        </option>
+      <select id="selectColunaData">
+        <option value="0">Carregue o arquivo primeiro</option>
       </select>
     </div>
 
     <div class="control-group">
       <label>Filtro 1: Mês de Emissão</label>
-      <select v-model="filtroMes" @change="atualizarGraficos">
+      <select id="selectMes">
         <option value="TODOS">Todos os Meses</option>
-        <option v-for="mes in mesesDisponiveis" :key="mes" :value="mes">{{ mes }}</option>
       </select>
     </div>
 
     <div class="control-group">
       <label>Filtro 2: Semana do Mês</label>
-      <select v-model="filtroSemana" @change="atualizarGraficos">
+      <select id="selectSemana">
         <option value="TODAS">Todas as Semanas</option>
-        <option v-for="sem in semanasDisponiveis" :key="sem" :value="sem">{{ sem }}</option>
       </select>
     </div>
   </div>
@@ -188,25 +163,25 @@
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-title">NFs Emitidas (Contagem Distinta)</div>
-      <div class="kpi-value">{{ kpis.totalNfsEmitidas }}</div>
+      <div class="kpi-value" id="kpiEmitidas">0</div>
       <div class="kpi-sub">Coluna D • Remessas únicas no período</div>
     </div>
 
     <div class="kpi-card azul">
       <div class="kpi-title">NFs Retornadas (Contagem Distinta)</div>
-      <div class="kpi-value">{{ kpis.totalNfsRetornadas }}</div>
+      <div class="kpi-value" id="kpiRetornadas">0</div>
       <div class="kpi-sub">Coluna J • Retornos vinculados</div>
     </div>
 
     <div class="kpi-card amarelo">
       <div class="kpi-title">Qtd. Notas Fiscais Retorno (Col. O)</div>
-      <div class="kpi-value">{{ kpis.somaQtdNfRetorno }}</div>
+      <div class="kpi-value" id="kpiQtdRetorno">0</div>
       <div class="kpi-sub">Soma da Coluna O no período</div>
     </div>
 
     <div class="kpi-card laranja">
       <div class="kpi-title">Qtd. Itens (Col. H)</div>
-      <div class="kpi-value">{{ kpis.somaQtdItens }}</div>
+      <div class="kpi-value" id="kpiQtdItens">0</div>
       <div class="kpi-sub">Itens movimentados (Coluna H)</div>
     </div>
   </div>
@@ -215,12 +190,12 @@
   <div class="charts-grid">
     <div class="panel">
       <h3>Comparativo Semanal: NFs Emitidas (Col. D) vs. NFs Retornadas (Col. J)</h3>
-      <canvas id="graficoSemanal" height="115"></canvas>
+      <canvas id="graficoSemanal" height="120"></canvas>
     </div>
 
     <div class="panel">
       <h3>Volume de Itens (Col. H) vs. Qtd. Retorno (Col. O)</h3>
-      <canvas id="graficoItens" height="240"></canvas>
+      <canvas id="graficoItens" height="185"></canvas>
     </div>
   </div>
 
@@ -239,67 +214,89 @@
           <th>Status Retorno</th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-for="(linha, i) in resumoTabela" :key="i">
-          <td><strong>{{ linha.mes }}</strong></td>
-          <td>{{ linha.semana }}</td>
-          <td>{{ linha.nfsEmitidas }}</td>
-          <td>{{ linha.nfsRetornadas }}</td>
-          <td>{{ linha.qtdNfRetorno }}</td>
-          <td>{{ linha.qtdItens }}</td>
-          <td>
-            <span class="badge" :class="linha.nfsRetornadas >= linha.nfsEmitidas ? 'badge-verde' : 'badge-laranja'">
-              {{ calcularPercentual(linha.nfsRetornadas, linha.nfsEmitidas) }}% Retornado
-            </span>
-          </td>
-        </tr>
-        <tr v-if="resumoTabela.length === 0">
+      <tbody id="corpoTabela">
+        <tr>
           <td colspan="7" style="text-align:center; padding: 25px; color: #64748B;">
-            Carregue a planilha de base acima para visualizar os dados.
+            Selecione a planilha de base acima para carregar os indicadores.
           </td>
         </tr>
       </tbody>
     </table>
   </div>
-</div>
 
 <script>
-const { createApp } = Vue;
+  let linhasBrutas = [];
+  let registrosProcessados = [];
+  let chartSemanal = null;
+  let chartItens = null;
 
-createApp({
-  data() {
-    return {
-      arquivoNome: '',
-      linhasBrutas: [],
-      cabecalhos: [],
-      colunaDataSelecionada: 0,
-      registrosProcessados: [],
-      filtroMes: 'TODOS',
-      filtroSemana: 'TODAS',
-      chartSemanal: null,
-      chartItens: null
+  const inputExcel = document.getElementById('inputExcel');
+  const selectColunaData = document.getElementById('selectColunaData');
+  const selectMes = document.getElementById('selectMes');
+  const selectSemana = document.getElementById('selectSemana');
+
+  function letraColuna(index) {
+    let letra = '';
+    while (index >= 0) {
+      letra = String.fromCharCode((index % 26) + 65) + letra;
+      index = Math.floor(index / 26) - 1;
+    }
+    return letra;
+  }
+
+  inputExcel.addEventListener('change', function(e) {
+    const file = e.target.files.item(0);
+    if (!file) return;
+
+    document.getElementById('statusArquivo').innerHTML = `Arquivo: <strong>${file.name}</strong>`;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const primeiraAba = workbook.SheetNames.at(0);
+      const sheet = workbook.Sheets[primeiraAba];
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      if (json.length > 1) {
+        const cabecalhos = json.at(0);
+        linhasBrutas = json.slice(1);
+
+        selectColunaData.innerHTML = '';
+        let idxDataPadrao = 0;
+
+        cabecalhos.forEach((col, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = `${letraColuna(idx)} - ${col || 'Sem título'}`;
+          selectColunaData.appendChild(opt);
+
+          const nomeCol = String(col).toLowerCase();
+          if (nomeCol.includes('data') || nomeCol.includes('emiss')) {
+            idxDataPadrao = idx;
+          }
+        });
+
+        selectColunaData.value = idxDataPadrao;
+        processarDados();
+      }
     };
-  },
-  computed: {
-    mesesDisponiveis() {
-      const set = new Set(this.registrosProcessados.map(r => r.mes));
-      return Array.from(set).filter(Boolean);
-    },
-    semanasDisponiveis() {
-      const set = new Set(this.registrosProcessados.map(r => r.semana));
-      return Array.from(set).filter(Boolean).sort();
-    },
-    dadosFiltrados() {
-      return this.registrosProcessados.filter(r => {
-        const passaMes = this.filtroMes === 'TODOS' || r.mes === this.filtroMes;
-        const passaSemana = this.filtroSemana === 'TODAS' || r.semana === this.filtroSemana;
-        return passaMes && passaSemana;
-      });
-    },
-    kpis() {
-      const nfsEmitidasSet = new Set();
-      const nfsRetornadasSet = new Set();
-      let somaQtdNfRetorno = 0;
-      let somaQtdItens = 0;
+    reader.readAsArrayBuffer(file);
+  });
 
-      this.dadosFiltrados.forEach(r => {
+  selectColunaData.addEventListener('change', processarDados);
+  selectMes.addEventListener('change', atualizarDashboard);
+  selectSemana.addEventListener('change', atualizarDashboard);
+
+  function extrairMesESemana(valorData) {
+    let dataObj = null;
+
+    if (valorData instanceof Date && !isNaN(valorData)) {
+      dataObj = valorData;
+    } else if (typeof valorData === 'number' && valorData > 20000) {
+      dataObj = new Date(Math.round((valorData - 25569) * 86400 * 1000));
+    } else if (typeof valorData === 'string' && valorData.trim() !== '') {
+      const partesBR = valorData.trim().split('/');
+      if (partesBR.length === 3) {
+        dataObj = new Date(Number(partesBR.at(2)), Number(partesBR.at(1)) - 1, Number(partesBR.at(0)));
+      } else {
