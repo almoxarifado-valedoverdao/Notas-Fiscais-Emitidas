@@ -22,7 +22,13 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-    body { background-color: var(--bg-light); color: var(--text-dark); line-height: 1.45; }
+    html, body {
+      background-color: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.45;
+      overflow-x: hidden;
+      min-height: 100%;
+    }
 
     /* TELA DE LOGIN CORPORATIVO */
     .login-overlay {
@@ -35,7 +41,7 @@
       justify-content: center;
       padding: 20px;
     }
-    .login-overlay.hidden { display: none; }
+    .login-overlay.hidden { display: none !important; pointer-events: none; }
     .login-card {
       background: #FFFFFF;
       width: 100%;
@@ -151,10 +157,9 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      background: rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.16);
       padding: 8px 14px;
       border-radius: 10px;
-      backdrop-filter: blur(6px);
     }
     .user-info { text-align: right; }
     .user-info strong { font-size: 0.86rem; display: block; }
@@ -230,7 +235,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.15s ease;
+      transition: background-color 0.15s ease;
     }
     .btn-upload { background-color: var(--vale-verde); color: white; }
     .btn-upload:hover { background-color: #005A00; }
@@ -263,7 +268,7 @@
       align-items: center;
       gap: 8px;
     }
-    .company-pill.active { border-color: #0F172A; transform: translateY(-1px); }
+    .company-pill.active { border-color: #0F172A; background: #F8FAFC; }
     .color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 
     /* STATUS BANNER */
@@ -306,7 +311,7 @@
     .kpi-value { font-size: 1.82rem; font-weight: 800; margin: 6px 0; color: var(--text-dark); }
     .kpi-sub { font-size: 0.77rem; color: var(--text-muted); font-weight: 600; }
 
-    /* GRÁFICOS */
+    /* GRÁFICOS COM CONTÊINER ESTÁVEL PARA ROLAGEM */
     .charts-grid {
       display: grid;
       grid-template-columns: 1.35fr 1fr;
@@ -325,6 +330,7 @@
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      min-width: 0;
     }
     .panel-header {
       display: flex;
@@ -337,7 +343,19 @@
       gap: 8px;
     }
     .panel-header h3 { font-size: 0.95rem; color: var(--floresta-azul); font-weight: 800; }
-    .chart-box { position: relative; height: 325px; width: 100%; }
+    .chart-box {
+      position: relative;
+      height: 325px;
+      min-height: 325px;
+      max-height: 325px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .chart-box canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
 
     /* TABELAS */
     .table-container { margin: 0 24px 26px 24px; overflow-x: auto; }
@@ -413,8 +431,8 @@
 </head>
 <body>
 
-  <!-- TELA DE LOGIN CORPORATIVO (JOCENIR E MANUELA) -->
-  <div class="login-overlay" id="loginOverlay">
+  <!-- TELA DE LOGIN CORPORATIVO (JOCENIR E MANUELA) - INICIA OCULTA PARA NÃO COBRIR O PAINEL -->
+  <div class="login-overlay hidden" id="loginOverlay">
     <div class="login-card">
       <div class="logo-container" style="margin: 0 auto;">
         <svg viewBox="0 0 120 115" width="56" height="56" xmlns="http://www.w3.org/2000/svg">
@@ -448,9 +466,14 @@
           <label for="inputLoginPass">Senha de Acesso</label>
           <input type="password" id="inputLoginPass" placeholder="Digite sua senha" value="verdao2026" required>
         </div>
-        <button type="submit" class="btn btn-upload" style="width:100%; justify-content:center; padding:11px; font-size:0.9rem; margin-top:6px;">
-          🔐 Entrar no Painel
-        </button>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button type="button" class="btn btn-outline" style="flex:1; justify-content:center;" onclick="fecharTelaLogin()">
+            Voltar
+          </button>
+          <button type="submit" class="btn btn-upload" style="flex:2; justify-content:center; padding:11px; font-size:0.9rem;">
+            🔐 Entrar no Painel
+          </button>
+        </div>
       </form>
       <small style="display:block; margin-top:12px; color:#64748B; font-size:0.73rem;">
         Credenciais padrão: <strong>jocenir</strong> / <strong>manuela</strong> • Senha: <strong>verdao2026</strong>
@@ -654,7 +677,7 @@
       <div class="panel-header">
         <h3>Top Fornecedores / Clientes: NFs Emitidas vs. NFs Retornadas e % de Retorno</h3>
       </div>
-      <div class="chart-box" style="height: 300px;">
+      <div class="chart-box" style="height: 300px; min-height: 300px; max-height: 300px;">
         <canvas id="chartFornecedores"></canvas>
       </div>
     </div>
@@ -837,17 +860,22 @@
   const pluginRotulosBarras = {
     id: 'pluginRotulosBarras',
     afterDatasetsDraw(chart) {
+      if (!chart || !chart.ctx) return;
       const { ctx } = chart;
       ctx.save();
       chart.data.datasets.forEach((dataset, i) => {
         const meta = chart.getDatasetMeta(i);
-        if (meta.hidden) return;
+        if (!meta || meta.hidden || !meta.data) return;
         meta.data.forEach((element, index) => {
+          if (!element || typeof element.tooltipPosition !== 'function') return;
           const val = dataset.data[index];
-          if (val === null || val === undefined) return;
+          if (val === null || val === undefined || isNaN(val)) return;
 
           const isPercent = Boolean(dataset.isPercent);
           if (!isPercent && Number(val) === 0) return;
+
+          const pos = element.tooltipPosition();
+          if (!pos || isNaN(pos.x) || isNaN(pos.y)) return;
 
           const texto = isPercent
             ? `${Number(val).toFixed(1).replace('.', ',')}%`
@@ -859,7 +887,6 @@
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
 
-          const pos = element.tooltipPosition();
           const yPos = isPercent ? pos.y - 6 : pos.y - 3;
 
           if (isPercent) {
@@ -876,7 +903,9 @@
       ctx.restore();
     }
   };
-  Chart.register(pluginRotulosBarras);
+  if (typeof Chart !== 'undefined') {
+    Chart.register(pluginRotulosBarras);
+  }
 
   // ============================================================================
   // 3. CÁLCULO DE SEMANA SEQUENCIAL DO ANO (SEMANA 01 EM JANEIRO EM DIANTE)
@@ -885,7 +914,6 @@
     const d = (dataObj instanceof Date && !isNaN(dataObj)) ? dataObj : new Date(2026, 0, 1);
     const inicioAno = new Date(d.getFullYear(), 0, 1);
     const diasPassados = Math.floor((d - inicioAno) / 86400000);
-    // Considera o alinhamento da primeira semana de janeiro (01/Jan = Semana 01)
     const numSemana = Math.min(53, Math.max(1, Math.floor((diasPassados + inicioAno.getDay()) / 7) + 1));
     return `Semana ${String(numSemana).padStart(2, '0')}`;
   }
@@ -893,18 +921,13 @@
   // ============================================================================
   // 4. BASE CONSOLIDADA INICIAL (GERAL SAP + FORNECEDORES/CLIENTES + OUTUBRO EXATO)
   // ============================================================================
-  // Outubro (2026-10) possui exatamente:
-  // - 270 NFs emitidas
-  // - 101 NFs de retorno (53 + 23 + 16 + 9 = 101)
-  // - 864 itens retornados na soma da Coluna O (284 + 98 + 456 + 26 = 864)
-  // - Semanas sequenciais contínuas desde a Semana 01 de Janeiro
   const CUBO_INICIAL_SAP = [
     {empresa:"VALE DO VERDAO SA",setor:"AGRICOLA",cod_parceiro:"100214",parceiro:"SOTREQ S/A - CATERPILLAR",mes:"2026-01",semana:"Semana 01",semana_retorno:"Semana 02",nfs_emit:31,nfs_ret:31,qtd_h:512,qtd_k:512,qtd_o:512,saldo_n:0,valor:980120.50},
     {empresa:"VALE DO VERDAO SA",setor:"AGRICOLA",cod_parceiro:"100308",parceiro:"MAQCAMPO JOHN DEERE LTDA",mes:"2026-01",semana:"Semana 02",semana_retorno:"Semana 03",nfs_emit:28,nfs_ret:28,qtd_h:620,qtd_k:626,qtd_o:618,saldo_n:1,valor:1120300.00},
     {empresa:"VALE DO VERDAO SA",setor:"INDUSTRIA",cod_parceiro:"100419",parceiro:"WEG EQUIPAMENTOS ELETRICOS S/A",mes:"2026-01",semana:"Semana 03",semana_retorno:"Semana 04",nfs_emit:25,nfs_ret:25,qtd_h:410,qtd_k:410,qtd_o:410,saldo_n:0,valor:894017.64},
     {empresa:"USINA PANORAMA SA",setor:"INDUSTRIA",cod_parceiro:"100512",parceiro:"SEW EURODRIVE BRASIL LTDA",mes:"2026-01",semana:"Semana 04",semana_retorno:"Semana 05",nfs_emit:42,nfs_ret:42,qtd_h:890,qtd_k:890,qtd_o:890,saldo_n:0,valor:1450000.00},
     {empresa:"CAMBUI ACUCAR E ALCOOL LT",setor:"AGRICOLA",cod_parceiro:"100622",parceiro:"RIBEIRAO DIESEL MERCEDES-BENZ",mes:"2026-01",semana:"Semana 02",semana_retorno:"Semana 03",nfs_emit:29,nfs_ret:29,qtd_h:450,qtd_k:450,qtd_o:450,saldo_n:0,valor:620000.00},
-    {empresa:"FLORESTA SA",setor:"AGRICOLA",cod_parceiro:"100740",parceiro:"COoperativa AGRO INDUSTRIAL GOIAS",mes:"2026-01",semana:"Semana 03",semana_retorno:"Semana 04",nfs_emit:20,nfs_ret:20,qtd_h:218,qtd_k:218,qtd_o:218,saldo_n:0,valor:410000.00},
+    {empresa:"FLORESTA SA",setor:"AGRICOLA",cod_parceiro:"100740",parceiro:"COOPERATIVA AGRO INDUSTRIAL GOIAS",mes:"2026-01",semana:"Semana 03",semana_retorno:"Semana 04",nfs_emit:20,nfs_ret:20,qtd_h:218,qtd_k:218,qtd_o:218,saldo_n:0,valor:410000.00},
 
     {empresa:"VALE DO VERDAO SA",setor:"AGRICOLA",cod_parceiro:"100214",parceiro:"SOTREQ S/A - CATERPILLAR",mes:"2026-02",semana:"Semana 05",semana_retorno:"Semana 06",nfs_emit:44,nfs_ret:44,qtd_h:610,qtd_k:610,qtd_o:610,saldo_n:0,valor:1310000.00},
     {empresa:"VALE DO VERDAO SA",setor:"AGRICOLA",cod_parceiro:"100815",parceiro:"HIDRAU TORQUE MANUTENCAO HIDRAULICA",mes:"2026-02",semana:"Semana 08",semana_retorno:"Semana 09",nfs_emit:52,nfs_ret:51,qtd_h:790,qtd_k:790,qtd_o:704,saldo_n:4,valor:1620764.24},
@@ -986,7 +1009,7 @@
     document.getElementById('loginError').style.display = 'none';
     document.getElementById('selectUsuarioAtivo').value = chaveEncontrada;
     trocarUsuarioAtivo();
-    document.getElementById('loginOverlay').classList.add('hidden');
+    fecharTelaLogin();
     gravarStorage('vv_usuario_logado_v2', chaveEncontrada);
   }
 
@@ -994,18 +1017,27 @@
     document.getElementById('loginOverlay').classList.remove('hidden');
   }
 
+  function fecharTelaLogin() {
+    document.getElementById('loginOverlay').classList.add('hidden');
+  }
+
   function trocarUsuarioAtivo() {
     const chave = document.getElementById('selectUsuarioAtivo').value;
     const u = USUARIOS_SISTEMA[chave];
+    if (!u) return;
     document.getElementById('lblNomeUsuario').textContent = u.nome;
     document.getElementById('lblCargoUsuario').textContent = `${u.cargo} • ${u.email}`;
     document.getElementById('infoUltimaCarga').textContent = `Usuário ativo: ${u.nome} (${u.email})`;
   }
 
   // ============================================================================
-  // 6. INICIALIZAÇÃO DO SISTEMA E FILTROS DINÂMICOS
+  // 6. INICIALIZAÇÃO DO SISTEMA E FILTROS DINÂMICOS (EXECUÇÃO IMEDIATA + SEGURA)
   // ============================================================================
-  window.addEventListener('DOMContentLoaded', () => {
+  let sistemaInicializado = false;
+  function inicializarSistema() {
+    if (sistemaInicializado) return;
+    sistemaInicializado = true;
+
     const salvo = lerStorage('vv_cubo_acumulado_v2', null);
     if (salvo && Array.isArray(salvo) && salvo.length > 0) {
       cuboAtivo = salvo;
@@ -1014,13 +1046,18 @@
     if (USUARIOS_SISTEMA[usrSalvo]) {
       document.getElementById('selectUsuarioAtivo').value = usrSalvo;
       trocarUsuarioAtivo();
-      document.getElementById('loginOverlay').classList.add('hidden');
     }
 
     popularFiltrosDinamicos();
     renderizarGridUsuariosModal();
     atualizarDashboard();
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarSistema);
+  } else {
+    inicializarSistema();
+  }
 
   function selecionarPillEmpresa(emp) {
     document.getElementById('filtroEmpresa').value = emp;
@@ -1031,7 +1068,6 @@
   }
 
   function popularFiltrosDinamicos() {
-    // Mês de Emissão
     const selectMes = document.getElementById('filtroMes');
     const valorMesAnt = selectMes.value || 'TODOS';
     const meses = [...new Set(cuboAtivo.map(r => r.mes))].sort();
@@ -1044,7 +1080,6 @@
     });
     if ([...selectMes.options].some(o => o.value === valorMesAnt)) selectMes.value = valorMesAnt;
 
-    // Semana Sequencial do Ano (Semana 01 a Semana 52)
     const selectSemana = document.getElementById('filtroSemana');
     const valorSemAnt = selectSemana.value || 'TODAS';
     const semanasSet = new Set();
@@ -1062,7 +1097,6 @@
     });
     if ([...selectSemana.options].some(o => o.value === valorSemAnt)) selectSemana.value = valorSemAnt;
 
-    // Fornecedor / Cliente
     const selectParc = document.getElementById('filtroParceiro');
     const valorParcAnt = selectParc.value || 'TODOS';
     const parceiros = [...new Set(cuboAtivo.map(r => r.parceiro || 'NÃO INFORMADO'))].sort();
@@ -1085,12 +1119,6 @@
   // ============================================================================
   // 7. LEITURA ACUMULATIVA DE PLANILHAS EXCEL (.XLSX) DE 19 COLUNAS (A a S)
   // ============================================================================
-  // Regras aplicadas:
-  // - Nota emitida: Coluna D + Data de Emissão (Coluna E) -> calcula Semana Sequencial de Emissão
-  // - Nota de retorno: Coluna J + Data da Nota de Retorno (Coluna S) -> calcula Semana Sequencial de Retorno
-  // - Soma de itens retornados: soma direta da Coluna O sem duplicação indevida
-  // - Contagem de NFs de retorno: contagem de notas de retorno distintas na Coluna J vinculadas às remessas
-  // - Base de Fornecedor/Cliente: extraída das colunas B (Código) e C (Nome Fornecedor/Cliente)
   function importarPlanilhaAcumulativa(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1120,8 +1148,8 @@
           const codParceiro = String(r[1] || '').trim() || 'S/COD';
           const nomeParceiro = String(r[2] || '').trim().toUpperCase() || 'FORNECEDOR / CLIENTE PADRÃO';
           const numNF = String(r[3]).trim();
-          const dtEmissao = parseDataExcel(r[4]); // Coluna E: Data de Emissão da Nota
-          const cfopRaw = String(r[5] || '').trim().toUpperCase().replace('/', ''); // Coluna F: CFOP
+          const dtEmissao = parseDataExcel(r[4]);
+          const cfopRaw = String(r[5] || '').trim().toUpperCase().replace('/', '');
 
           if (CFOPS_EXCLUIDOS.includes(cfopRaw)) {
             linhasCFOPExcluidas++;
@@ -1129,15 +1157,15 @@
           }
           linhasValidas++;
 
-          const itemNF = String(r[6] || i).trim(); // Coluna G: Item NF
-          const qtdItemH = parseNumeroBR(r[7]);    // Coluna H: Quantidade Líquida do Item Emitido
-          const nfRetornoJ = String(r[9] || '').trim(); // Coluna J: Nota de Retorno
-          const qtdRemessaK = parseNumeroBR(r[10]); // Coluna K: Quantidade Remessa
-          const valorItemM = parseNumeroBR(r[12]);  // Coluna M: Valor Total
-          const saldoTotalN = parseNumeroBR(r[13]); // Coluna N: Saldo
-          const qtdRetornoO = parseNumeroBR(r[14]); // Coluna O: Quantidade de Itens Retornados (soma direta)
-          const usuarioQ = String(r[16] || '').trim().toUpperCase(); // Coluna Q: Usuário
-          const dtRetornoS = r[18] ? parseDataExcel(r[18]) : null;   // Coluna S: Data da Nota de Retorno
+          const itemNF = String(r[6] || i).trim();
+          const qtdItemH = parseNumeroBR(r[7]);
+          const nfRetornoJ = String(r[9] || '').trim();
+          const qtdRemessaK = parseNumeroBR(r[10]);
+          const valorItemM = parseNumeroBR(r[12]);
+          const saldoTotalN = parseNumeroBR(r[13]);
+          const qtdRetornoO = parseNumeroBR(r[14]);
+          const usuarioQ = String(r[16] || '').trim().toUpperCase();
+          const dtRetornoS = r[18] ? parseDataExcel(r[18]) : null;
 
           if (usuarioQ && !MAPA_USUARIOS_SETOR[usuarioQ]) {
             MAPA_USUARIOS_SETOR[usuarioQ] = (usuarioQ.includes('AGR') || usuarioQ.includes('MOT')) ? 'AGRICOLA' : 'INDUSTRIA';
@@ -1173,16 +1201,13 @@
           }
 
           const g = gruposImportados[chaveGrupo];
-          // Identifica a nota emitida por (Coluna D + Data Emissão Coluna E)
           const idNotaEmitida = `${numNF}_${anoMes}_${dtEmissao.getDate()}`;
           g.setNFsEmit.add(idNotaEmitida);
 
-          // Identifica a nota de retorno pela Coluna J (vinculada à remessa/data de retorno Coluna S)
           if (temNotaRetorno) {
             g.setNFsRet.add(`${numNF}_${nfRetornoJ}`);
           }
 
-          // Evita duplicar a quantidade emitida (Col H) caso a mesma NF+Item tenha múltiplos retornos parciais
           const chaveItemUnico = `${numNF}_${itemNF}`;
           if (!g.itensEmitidosVistos.has(chaveItemUnico)) {
             g.itensEmitidosVistos.add(chaveItemUnico);
@@ -1191,11 +1216,9 @@
             g.saldo_n += saldoTotalN;
           }
           g.qtd_k += qtdRemessaK;
-          // Soma exata da Coluna O (Quantidade de itens retornados)
           g.qtd_o += qtdRetornoO;
         }
 
-        // Converte os grupos importados e atualiza os meses correspondentes na base ativa
         const mesesImportados = new Set(Object.values(gruposImportados).map(g => g.mes));
         const cuboPreservado = cuboAtivo.filter(item => !mesesImportados.has(item.mes));
 
@@ -1261,7 +1284,7 @@
   }
 
   // ============================================================================
-  // 8. ATUALIZAÇÃO DE KPIS, GRÁFICOS COM RÓTULOS E TABELAS
+  // 8. ATUALIZAÇÃO DE KPIS, GRÁFICOS ESTÁVEIS (SEM SUMIR NO SCROLL) E TABELAS
   // ============================================================================
   function obterDadosFiltrados() {
     const emp = document.getElementById('filtroEmpresa').value;
@@ -1283,6 +1306,29 @@
       }
       return true;
     });
+  }
+
+  function opcoesGraficoPadrao(tituloEixoY, maxEixoDireito) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false, // Evita piscar ou desaparecer ao rolar a barra de rolagem
+      resizeDelay: 120,
+      layout: { padding: { top: 24 } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: tituloEixoY ? { display: true, text: tituloEixoY } : { display: false }
+        },
+        y1: {
+          beginAtZero: true,
+          max: maxEixoDireito || 115,
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { callback: v => v + '%' }
+        }
+      }
+    };
   }
 
   function atualizarDashboard() {
@@ -1312,13 +1358,17 @@
     document.getElementById('kpiItensRetornados').textContent = `${totQtdO.toLocaleString('pt-BR', {maximumFractionDigits:1})} (${pctItens}%)`;
     document.getElementById('kpiSubSaldo').textContent = `Saldo Líquido Pendente: ${saldoLiquido.toLocaleString('pt-BR', {maximumFractionDigits:1})} itens`;
 
-    renderizarGraficoMensal(filtrados);
-    renderizarGraficoSemanal(filtrados);
-    renderizarGraficoEmpresas(filtrados);
-    renderizarGraficoSetores(filtrados);
-    renderizarGraficoFornecedores(filtrados);
+    // Renderiza tabelas primeiro para garantir que nunca sumam mesmo se Chart.js atrasar
     renderizarTabelaFornecedores(filtrados);
     renderizarTabelaConsolidada(filtrados);
+
+    if (typeof Chart !== 'undefined') {
+      renderizarGraficoMensal(filtrados);
+      renderizarGraficoSemanal(filtrados);
+      renderizarGraficoEmpresas(filtrados);
+      renderizarGraficoSetores(filtrados);
+      renderizarGraficoFornecedores(filtrados);
+    }
   }
 
   function renderizarGraficoMensal(dados) {
@@ -1334,41 +1384,36 @@
     const retornadas = meses.map(m => porMes[m].ret);
     const percentuais = meses.map(m => porMes[m].emit > 0 ? Number(((porMes[m].ret / porMes[m].emit) * 100).toFixed(1)) : 0);
 
-    if (chartMensal) chartMensal.destroy();
-    chartMensal = new Chart(document.getElementById('chartMensalNFs'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'NFs Emitidas', data: emitidas, backgroundColor: '#007600', borderRadius: 4, yAxisID: 'y' },
-          { label: 'NFs Retornadas', data: retornadas, backgroundColor: '#1F4E79', borderRadius: 4, yAxisID: 'y' },
-          {
-            label: '% Retorno NFs',
-            data: percentuais,
-            type: 'line',
-            borderColor: '#D97706',
-            backgroundColor: '#FFC000',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            yAxisID: 'y1',
-            isPercent: true
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 24 } },
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: 'Nº de Notas' } },
-          y1: { beginAtZero: true, max: 115, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-        }
+    const datasets = [
+      { label: 'NFs Emitidas', data: emitidas, backgroundColor: '#007600', borderRadius: 4, yAxisID: 'y' },
+      { label: 'NFs Retornadas', data: retornadas, backgroundColor: '#1F4E79', borderRadius: 4, yAxisID: 'y' },
+      {
+        label: '% Retorno NFs',
+        data: percentuais,
+        type: 'line',
+        borderColor: '#D97706',
+        backgroundColor: '#FFC000',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        yAxisID: 'y1',
+        isPercent: true
       }
-    });
+    ];
+
+    if (chartMensal) {
+      chartMensal.data.labels = labels;
+      chartMensal.data.datasets = datasets;
+      chartMensal.update('none');
+    } else {
+      chartMensal = new Chart(document.getElementById('chartMensalNFs'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: opcoesGraficoPadrao('Nº de Notas', 115)
+      });
+    }
   }
 
   function renderizarGraficoSemanal(dados) {
-    // Compara em qual semana sequencial do ano a nota foi emitida vs. em qual semana teve seu retorno
     const mapaSemanas = {};
     dados.forEach(r => {
       const sEmit = r.semana || 'Semana 01';
@@ -1381,41 +1426,38 @@
     });
 
     const semanasOrdem = Object.keys(mapaSemanas).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+    const labels = semanasOrdem.map(s => s.replace('Semana ', 'Sem. '));
     const emitSem = semanasOrdem.map(s => mapaSemanas[s].emit);
     const retSem = semanasOrdem.map(s => mapaSemanas[s].ret);
     const pctSem = semanasOrdem.map(s => mapaSemanas[s].emit > 0 ? Number(((mapaSemanas[s].ret / mapaSemanas[s].emit) * 100).toFixed(1)) : 0);
 
-    if (chartSemanal) chartSemanal.destroy();
-    chartSemanal = new Chart(document.getElementById('chartSemanalItens'), {
-      type: 'bar',
-      data: {
-        labels: semanasOrdem.map(s => s.replace('Semana ', 'Sem. ')),
-        datasets: [
-          { label: 'NFs na Semana de Emissão', data: emitSem, backgroundColor: '#ED7D31', borderRadius: 4, yAxisID: 'y' },
-          { label: 'NFs na Semana de Retorno', data: retSem, backgroundColor: '#1F4E79', borderRadius: 4, yAxisID: 'y' },
-          {
-            label: '% Relação Retorno/Emissão',
-            data: pctSem,
-            type: 'line',
-            borderColor: '#007600',
-            backgroundColor: '#007600',
-            borderWidth: 2,
-            pointRadius: 3.5,
-            yAxisID: 'y1',
-            isPercent: true
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 24 } },
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: 'Nº de Notas' } },
-          y1: { beginAtZero: true, max: 125, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-        }
+    const datasets = [
+      { label: 'NFs na Semana de Emissão', data: emitSem, backgroundColor: '#ED7D31', borderRadius: 4, yAxisID: 'y' },
+      { label: 'NFs na Semana de Retorno', data: retSem, backgroundColor: '#1F4E79', borderRadius: 4, yAxisID: 'y' },
+      {
+        label: '% Relação Retorno/Emissão',
+        data: pctSem,
+        type: 'line',
+        borderColor: '#007600',
+        backgroundColor: '#007600',
+        borderWidth: 2,
+        pointRadius: 3.5,
+        yAxisID: 'y1',
+        isPercent: true
       }
-    });
+    ];
+
+    if (chartSemanal) {
+      chartSemanal.data.labels = labels;
+      chartSemanal.data.datasets = datasets;
+      chartSemanal.update('none');
+    } else {
+      chartSemanal = new Chart(document.getElementById('chartSemanalItens'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: opcoesGraficoPadrao('Nº de Notas', 125)
+      });
+    }
   }
 
   function renderizarGraficoEmpresas(dados) {
@@ -1427,76 +1469,69 @@
     const retEmp = empresas.map(e => dados.filter(r => r.empresa === e).reduce((s, x) => s + x.nfs_ret, 0));
     const pctEmp = empresas.map((e, idx) => emitEmp[idx] > 0 ? Number(((retEmp[idx] / emitEmp[idx]) * 100).toFixed(1)) : 0);
 
-    if (chartEmpresas) chartEmpresas.destroy();
-    chartEmpresas = new Chart(document.getElementById('chartEmpresas'), {
-      type: 'bar',
-      data: {
-        labels: nomesCurtos,
-        datasets: [
-          { label: 'NFs Emitidas', data: emitEmp, backgroundColor: cores, borderRadius: 5, yAxisID: 'y' },
-          { label: 'NFs Retornadas', data: retEmp, backgroundColor: '#64748B', borderRadius: 5, yAxisID: 'y' },
-          {
-            label: '% Retorno NFs',
-            data: pctEmp,
-            type: 'line',
-            borderColor: '#B45309',
-            backgroundColor: '#FFC000',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            yAxisID: 'y1',
-            isPercent: true
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 24 } },
-        scales: {
-          y: { beginAtZero: true },
-          y1: { beginAtZero: true, max: 115, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-        }
+    const datasets = [
+      { label: 'NFs Emitidas', data: emitEmp, backgroundColor: cores, borderRadius: 5, yAxisID: 'y' },
+      { label: 'NFs Retornadas', data: retEmp, backgroundColor: '#64748B', borderRadius: 5, yAxisID: 'y' },
+      {
+        label: '% Retorno NFs',
+        data: pctEmp,
+        type: 'line',
+        borderColor: '#B45309',
+        backgroundColor: '#FFC000',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        yAxisID: 'y1',
+        isPercent: true
       }
-    });
+    ];
+
+    if (chartEmpresas) {
+      chartEmpresas.data.labels = nomesCurtos;
+      chartEmpresas.data.datasets = datasets;
+      chartEmpresas.update('none');
+    } else {
+      chartEmpresas = new Chart(document.getElementById('chartEmpresas'), {
+        type: 'bar',
+        data: { labels: nomesCurtos, datasets },
+        options: opcoesGraficoPadrao('', 115)
+      });
+    }
   }
 
   function renderizarGraficoSetores(dados) {
     const setores = ['AGRICOLA', 'INDUSTRIA'];
+    const labels = ['AGRÍCOLA', 'INDÚSTRIA'];
     const emitSet = setores.map(s => dados.filter(r => r.setor === s).reduce((acc, x) => acc + x.nfs_emit, 0));
     const retSet = setores.map(s => dados.filter(r => r.setor === s).reduce((acc, x) => acc + x.nfs_ret, 0));
     const pctSet = setores.map((s, idx) => emitSet[idx] > 0 ? Number(((retSet[idx] / emitSet[idx]) * 100).toFixed(1)) : 0);
 
-    if (chartSetores) chartSetores.destroy();
-    chartSetores = new Chart(document.getElementById('chartSetores'), {
-      type: 'bar',
-      data: {
-        labels: ['AGRÍCOLA', 'INDÚSTRIA'],
-        datasets: [
-          { label: 'NFs Emitidas', data: emitSet, backgroundColor: ['#007600', '#1F4E79'], borderRadius: 5, yAxisID: 'y' },
-          { label: 'NFs Retornadas', data: retSet, backgroundColor: ['#FFC000', '#ED7D31'], borderRadius: 5, yAxisID: 'y' },
-          {
-            label: '% Retorno NFs',
-            data: pctSet,
-            type: 'line',
-            borderColor: '#0F172A',
-            backgroundColor: '#0F172A',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            yAxisID: 'y1',
-            isPercent: true
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 24 } },
-        scales: {
-          y: { beginAtZero: true },
-          y1: { beginAtZero: true, max: 115, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-        }
+    const datasets = [
+      { label: 'NFs Emitidas', data: emitSet, backgroundColor: ['#007600', '#1F4E79'], borderRadius: 5, yAxisID: 'y' },
+      { label: 'NFs Retornadas', data: retSet, backgroundColor: ['#FFC000', '#ED7D31'], borderRadius: 5, yAxisID: 'y' },
+      {
+        label: '% Retorno NFs',
+        data: pctSet,
+        type: 'line',
+        borderColor: '#0F172A',
+        backgroundColor: '#0F172A',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        yAxisID: 'y1',
+        isPercent: true
       }
-    });
+    ];
+
+    if (chartSetores) {
+      chartSetores.data.labels = labels;
+      chartSetores.data.datasets = datasets;
+      chartSetores.update('none');
+    } else {
+      chartSetores = new Chart(document.getElementById('chartSetores'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: opcoesGraficoPadrao('', 115)
+      });
+    }
   }
 
   function renderizarGraficoFornecedores(dados) {
@@ -1517,37 +1552,33 @@
     const ret = top.map(x => x[1].ret);
     const pct = top.map(x => x[1].emit > 0 ? Number(((x[1].ret / x[1].emit) * 100).toFixed(1)) : 0);
 
-    if (chartFornecedores) chartFornecedores.destroy();
-    chartFornecedores = new Chart(document.getElementById('chartFornecedores'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'NFs Emitidas', data: emit, backgroundColor: '#1F4E79', borderRadius: 4, yAxisID: 'y' },
-          { label: 'NFs Retornadas', data: ret, backgroundColor: '#007600', borderRadius: 4, yAxisID: 'y' },
-          {
-            label: '% Retorno NFs',
-            data: pct,
-            type: 'line',
-            borderColor: '#ED7D31',
-            backgroundColor: '#FFC000',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            yAxisID: 'y1',
-            isPercent: true
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 24 } },
-        scales: {
-          y: { beginAtZero: true },
-          y1: { beginAtZero: true, max: 115, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
-        }
+    const datasets = [
+      { label: 'NFs Emitidas', data: emit, backgroundColor: '#1F4E79', borderRadius: 4, yAxisID: 'y' },
+      { label: 'NFs Retornadas', data: ret, backgroundColor: '#007600', borderRadius: 4, yAxisID: 'y' },
+      {
+        label: '% Retorno NFs',
+        data: pct,
+        type: 'line',
+        borderColor: '#ED7D31',
+        backgroundColor: '#FFC000',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        yAxisID: 'y1',
+        isPercent: true
       }
-    });
+    ];
+
+    if (chartFornecedores) {
+      chartFornecedores.data.labels = labels;
+      chartFornecedores.data.datasets = datasets;
+      chartFornecedores.update('none');
+    } else {
+      chartFornecedores = new Chart(document.getElementById('chartFornecedores'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: opcoesGraficoPadrao('', 115)
+      });
+    }
   }
 
   function renderizarTabelaFornecedores(dados) {
